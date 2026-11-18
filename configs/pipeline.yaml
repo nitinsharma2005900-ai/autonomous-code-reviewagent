@@ -1,0 +1,24 @@
+pipeline:
+  name: autonomous-code-review-agent
+  version: "1.0.0"
+  interrupt_before:
+    - apply_changes_node
+  max_refactor_iterations: 5
+
+sandbox:
+  linters:
+    - flake8
+    - black
+  timeout_seconds: 15
+  max_file_size_bytes: 262144
+  flake8_config: configs/.flake8
+
+checkpointer:
+  default_type: sqlite
+  sqlite_db_path: data/review_checkpoints.sqlite
+
+github:
+  api_base_url: https://api.github.com
+  timeout_seconds: 20
+  supported_extensions:
+    - .py
