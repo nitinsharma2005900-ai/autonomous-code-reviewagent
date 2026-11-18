@@ -99,7 +99,11 @@ def _match_append_for_loop(list_var: str, for_node: ast.For) -> ast.ListComp | N
     body_stmt = for_node.body[0]
     ifs: list[ast.expr] = []
 
-    if isinstance(body_stmt, ast.If) and not body_stmt.orelse and len(body_stmt.body) == 1:
+    if (
+        isinstance(body_stmt, ast.If)
+        and not body_stmt.orelse
+        and len(body_stmt.body) == 1
+    ):
         ifs.append(body_stmt.test)
         body_stmt = body_stmt.body[0]
 

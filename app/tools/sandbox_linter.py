@@ -30,7 +30,12 @@ class LintResult:
 
     def to_report(self) -> str:
         """Render a deterministic human- and LLM-readable diagnostic report."""
-        if self.passed and not self.flake8_issues and not self.black_needs_formatting and not self.errors:
+        if (
+            self.passed
+            and not self.flake8_issues
+            and not self.black_needs_formatting
+            and not self.errors
+        ):
             return "PASS: No flake8 or black formatting issues detected."
 
         sections: list[str] = []

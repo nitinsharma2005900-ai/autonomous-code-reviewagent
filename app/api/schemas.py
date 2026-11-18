@@ -22,14 +22,20 @@ class GitHubPullRequestObject(BaseModel):
     html_url: Optional[str] = Field(default=None, description="Pull Request web URL")
     number: Optional[int] = Field(default=None, ge=1, description="Pull Request number")
     title: Optional[str] = Field(default=None, description="Pull Request title")
-    head: Optional[GitHubBranchRef] = Field(default=None, description="Source branch info")
-    base: Optional[GitHubBranchRef] = Field(default=None, description="Target branch info")
+    head: Optional[GitHubBranchRef] = Field(
+        default=None, description="Source branch info"
+    )
+    base: Optional[GitHubBranchRef] = Field(
+        default=None, description="Target branch info"
+    )
 
 
 class GitHubRepositoryObject(BaseModel):
     """Subset of GitHub's standard `repository` webhook object."""
 
-    full_name: Optional[str] = Field(default=None, description="Repository full name (owner/repo)")
+    full_name: Optional[str] = Field(
+        default=None, description="Repository full name (owner/repo)"
+    )
     html_url: Optional[str] = Field(default=None, description="Repository HTML URL")
     clone_url: Optional[str] = Field(default=None, description="Repository clone URL")
 
@@ -40,18 +46,26 @@ class GitHubWebhookPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     # Standard GitHub webhook fields
-    action: Optional[str] = Field(default="opened", description="GitHub PR event action")
+    action: Optional[str] = Field(
+        default="opened", description="GitHub PR event action"
+    )
     number: Optional[int] = Field(default=None, ge=1, description="Pull Request number")
     pull_request: Optional[GitHubPullRequestObject] = Field(default=None)
     repository: Optional[GitHubRepositoryObject] = Field(default=None)
 
     # Simplified / mock payload fields (for local testing & verification)
     pr_url: Optional[str] = Field(default=None, description="Direct Pull Request URL")
-    repository_url: Optional[str] = Field(default=None, description="GitHub repository URL")
-    repo_url: Optional[str] = Field(default=None, description="Alias for repository_url")
+    repository_url: Optional[str] = Field(
+        default=None, description="GitHub repository URL"
+    )
+    repo_url: Optional[str] = Field(
+        default=None, description="Alias for repository_url"
+    )
     branch: Optional[str] = Field(default=None, description="Source branch name")
     branch_name: Optional[str] = Field(default=None, description="Alias for branch")
-    pr_number: Optional[int] = Field(default=None, ge=1, description="Pull Request number")
+    pr_number: Optional[int] = Field(
+        default=None, ge=1, description="Pull Request number"
+    )
     files: Optional[dict[str, str]] = Field(
         default=None,
         description="Optional inline filename->code map for local/offline webhook simulations",
@@ -121,7 +135,9 @@ class ApprovalRequest(BaseModel):
 class ReviewResponse(BaseModel):
     """Current state snapshot of an autonomous code review thread."""
 
-    thread_id: str = Field(..., description="Unique LangGraph checkpointer thread identifier")
+    thread_id: str = Field(
+        ..., description="Unique LangGraph checkpointer thread identifier"
+    )
     status: str = Field(
         ...,
         description="Pipeline execution status: awaiting_approval, in_progress, or completed",
@@ -132,8 +148,12 @@ class ReviewResponse(BaseModel):
         default_factory=list,
         description="Next scheduled LangGraph node(s) waiting after the interrupt gate",
     )
-    revision_count: int = Field(default=0, description="Number of refactoring drafts generated")
-    is_approved: Optional[bool] = Field(default=None, description="Human reviewer approval state")
+    revision_count: int = Field(
+        default=0, description="Number of refactoring drafts generated"
+    )
+    is_approved: Optional[bool] = Field(
+        default=None, description="Human reviewer approval state"
+    )
     reviewer_feedback: Optional[str] = Field(
         default=None, description="Most recent reviewer feedback"
     )

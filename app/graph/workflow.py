@@ -62,7 +62,9 @@ def build_review_graph(
     builder = StateGraph(ReviewState)
     builder.add_node("fetch_pr_node", create_fetch_pr_node(resolved_deps))
     builder.add_node("lint_code_node", create_lint_code_node(resolved_deps))
-    builder.add_node("propose_refactor_node", create_propose_refactor_node(resolved_deps))
+    builder.add_node(
+        "propose_refactor_node", create_propose_refactor_node(resolved_deps)
+    )
     builder.add_node("apply_changes_node", create_apply_changes_node(resolved_deps))
 
     builder.add_edge(START, "fetch_pr_node")
@@ -97,7 +99,9 @@ class ReviewPipelineService:
         self.settings = settings or get_settings()
         self.deps = deps or PipelineDependencies(settings=self.settings)
         if checkpointer is None:
-            self.checkpointer, self._sqlite_conn = create_checkpointer(settings=self.settings)
+            self.checkpointer, self._sqlite_conn = create_checkpointer(
+                settings=self.settings
+            )
         else:
             self.checkpointer = checkpointer
             self._sqlite_conn = sqlite_conn
@@ -169,7 +173,9 @@ class ReviewPipelineService:
             "history": [],
         }
 
-        logger.info("Starting review thread %s for PR %s (branch=%s)", tid, pr_url, branch)
+        logger.info(
+            "Starting review thread %s for PR %s (branch=%s)", tid, pr_url, branch
+        )
         self.graph.invoke(initial_state, config=config)
 
         if tid not in self._known_threads:
@@ -203,7 +209,10 @@ class ReviewPipelineService:
         now = datetime.now(timezone.utc).isoformat()
 
         if approved:
-            logger.info("Thread %s approved by reviewer; resuming apply_changes_node.", thread_id)
+            logger.info(
+                "Thread %s approved by reviewer; resuming apply_changes_node.",
+                thread_id,
+            )
             self.graph.update_state(
                 config,
                 {
@@ -233,7 +242,8 @@ class ReviewPipelineService:
             config,
             {
                 "is_approved": False,
-                "reviewer_feedback": feedback or "Please improve code quality and readability.",
+                "reviewer_feedback": feedback
+                or "Please improve code quality and readability.",
                 "history": [
                     {
                         "node": "human_review_gate",

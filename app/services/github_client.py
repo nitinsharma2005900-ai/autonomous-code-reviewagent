@@ -64,7 +64,9 @@ def parse_github_url(
         owner = pr_match.group("owner")
         repo = pr_match.group("repo")
         resolved_pr = pr_number or int(pr_match.group("pr_number"))
-        canonical_pr_url = pr_url or f"https://github.com/{owner}/{repo}/pull/{resolved_pr}"
+        canonical_pr_url = (
+            pr_url or f"https://github.com/{owner}/{repo}/pull/{resolved_pr}"
+        )
         return PullRequestRef(
             owner=owner,
             repo=repo,
@@ -152,7 +154,9 @@ class GitHubClient:
                 )
             return response.json()
         except httpx.HTTPError as exc:
-            raise GitHubAPIError(f"GitHub API transport error for {endpoint}: {exc}") from exc
+            raise GitHubAPIError(
+                f"GitHub API transport error for {endpoint}: {exc}"
+            ) from exc
         finally:
             if own_client:
                 client.close()
@@ -183,7 +187,9 @@ class GitHubClient:
                 f"/repos/{pr_ref.owner}/{pr_ref.repo}/pulls/{pr_ref.pr_number}/files",
             )
             if not isinstance(files_payload, list):
-                raise GitHubAPIError("Unexpected response format when listing PR files.")
+                raise GitHubAPIError(
+                    "Unexpected response format when listing PR files."
+                )
 
             code_contents: dict[str, str] = {}
             for file_entry in files_payload:
@@ -212,7 +218,9 @@ class GitHubClient:
             params={"recursive": "1"},
         )
         if not isinstance(tree_payload, dict):
-            raise GitHubAPIError("Unexpected response format when fetching repository tree.")
+            raise GitHubAPIError(
+                "Unexpected response format when fetching repository tree."
+            )
 
         code_contents = {}
         for item in tree_payload.get("tree", []):
@@ -237,7 +245,9 @@ class GitHubClient:
             params={"ref": ref},
         )
         if not isinstance(payload, dict) or "content" not in payload:
-            raise GitHubAPIError(f"File content missing in GitHub response for {file_path}")
+            raise GitHubAPIError(
+                f"File content missing in GitHub response for {file_path}"
+            )
 
         encoding = payload.get("encoding", "base64")
         raw_content = payload["content"]
@@ -296,7 +306,9 @@ class GitHubClient:
                 if exc.status_code != 404:
                     raise
 
-            encoded_content = base64.b64encode(new_content.encode("utf-8")).decode("ascii")
+            encoded_content = base64.b64encode(new_content.encode("utf-8")).decode(
+                "ascii"
+            )
             body: dict[str, Any] = {
                 "message": f"{commit_message} ({file_path})",
                 "content": encoded_content,

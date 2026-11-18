@@ -43,7 +43,9 @@ class PipelineDependencies:
     refactor_engine: RefactorEngine = field(default_factory=RefactorEngine)
 
 
-def create_fetch_pr_node(deps: PipelineDependencies) -> Callable[[ReviewState], dict[str, Any]]:
+def create_fetch_pr_node(
+    deps: PipelineDependencies,
+) -> Callable[[ReviewState], dict[str, Any]]:
     """Create `fetch_pr_node` that pulls modified files from GitHub into graph state."""
 
     def fetch_pr_node(state: ReviewState) -> dict[str, Any]:
@@ -99,7 +101,9 @@ def create_fetch_pr_node(deps: PipelineDependencies) -> Callable[[ReviewState], 
     return fetch_pr_node
 
 
-def create_lint_code_node(deps: PipelineDependencies) -> Callable[[ReviewState], dict[str, Any]]:
+def create_lint_code_node(
+    deps: PipelineDependencies,
+) -> Callable[[ReviewState], dict[str, Any]]:
     """Create `lint_code_node` that runs the sandboxed LangChain linter tool on each file."""
 
     def lint_code_node(state: ReviewState) -> dict[str, Any]:

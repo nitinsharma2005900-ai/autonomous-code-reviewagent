@@ -43,6 +43,7 @@ def create_app(
         lifespan=lifespan,
     )
 
+    application.state.settings = resolved_settings
     if pipeline_service is not None:
         application.state.pipeline_service = pipeline_service
 

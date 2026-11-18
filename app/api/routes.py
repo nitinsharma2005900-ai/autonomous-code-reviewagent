@@ -34,6 +34,11 @@ def get_pipeline_service(request: Request) -> ReviewPipelineService:
     return request.app.state.pipeline_service
 
 
+def get_app_settings(request: Request) -> Settings:
+    """Resolve the Settings instance bound to this FastAPI application."""
+    return getattr(request.app.state, "settings", get_settings())
+
+
 def _to_review_response(snapshot: ReviewSnapshot) -> ReviewResponse:
     state = snapshot.state
     return ReviewResponse(
@@ -66,9 +71,10 @@ def _verify_webhook_signature(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or malformed X-Hub-Signature-256 header.",
         )
-    expected = "sha256=" + hmac.new(
-        secret.encode("utf-8"), raw_body, hashlib.sha256
-    ).hexdigest()
+    expected = (
+        "sha256="
+        + hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+    )
     if not hmac.compare_digest(expected, signature_header):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -77,7 +83,7 @@ def _verify_webhook_signature(
 
 
 @router.get("/health", response_model=HealthResponse, tags=["System"])
-def health_check(settings: Settings = Depends(get_settings)) -> HealthResponse:
+def health_check(settings: Settings = Depends(get_app_settings)) -> HealthResponse:
     """Return service health and active checkpointer configuration."""
     return HealthResponse(
         status="ok",
@@ -98,12 +104,14 @@ async def github_webhook(
     request: Request,
     x_hub_signature_256: str | None = Header(default=None, alias="X-Hub-Signature-256"),
     pipeline: ReviewPipelineService = Depends(get_pipeline_service),
-    settings: Settings = Depends(get_settings),
+    settings: Settings = Depends(get_app_settings),
 ) -> ReviewResponse:
     """Receive a GitHub PR event payload, run sandbox linting & refactoring, and halt at HITL gate."""
     if settings.github_webhook_secret:
         raw_body = await request.body()
-        _verify_webhook_signature(raw_body, x_hub_signature_256, settings.github_webhook_secret)
+        _verify_webhook_signature(
+            raw_body, x_hub_signature_256, settings.github_webhook_secret
+        )
 
     pr_url, branch, pr_number = payload.resolve_parameters()
 

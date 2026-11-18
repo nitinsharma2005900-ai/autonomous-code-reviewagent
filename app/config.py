@@ -15,7 +15,9 @@ DEFAULT_PIPELINE_CONFIG_PATH = PROJECT_ROOT / "configs" / "pipeline.yaml"
 DEFAULT_FLAKE8_CONFIG_PATH = PROJECT_ROOT / "configs" / ".flake8"
 
 
-def load_pipeline_yaml(config_path: Path = DEFAULT_PIPELINE_CONFIG_PATH) -> dict[str, Any]:
+def load_pipeline_yaml(
+    config_path: Path = DEFAULT_PIPELINE_CONFIG_PATH,
+) -> dict[str, Any]:
     """Load pipeline YAML configuration if present."""
     if not config_path.exists():
         return {}
