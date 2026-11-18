@@ -1,0 +1,788 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Autonomous Code Review & Refactoring Agent",
+    "description": "LangGraph-powered stateful code review pipeline with sandboxed flake8/black static analysis, LLM-assisted refactoring, persistent checkpoints, human-in-the-loop (HITL) approval gates with rollback loops, and GitHub API integration.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Health Check",
+        "description": "Return service health and active checkpointer configuration.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/webhooks/github": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Ingest GitHub Pull Request webhook and start LangGraph review thread",
+        "description": "Receive a GitHub PR event payload, run sandbox linting & refactoring, and halt at HITL gate.",
+        "operationId": "github_webhook_api_webhooks_github_post",
+        "parameters": [
+          {
+            "name": "X-Hub-Signature-256",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Hub-Signature-256"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GitHubWebhookPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/{thread_id}/approve": {
+      "post": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Submit human approval or rejection feedback to resume a paused review thread",
+        "description": "Approve and commit refactored code, or reject with feedback to rollback and regenerate.",
+        "operationId": "approve_review_api_reviews__thread_id__approve_post",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/{thread_id}": {
+      "get": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Retrieve current state of a review thread",
+        "description": "Fetch the persisted LangGraph checkpoint state for a review thread.",
+        "operationId": "get_review_api_reviews__thread_id__get",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/{thread_id}/history": {
+      "get": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Retrieve checkpoint state history for a review thread",
+        "description": "Return LangGraph checkpointer history snapshots for auditing and rollback inspection.",
+        "operationId": "get_review_history_api_reviews__thread_id__history_get",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckpointHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews": {
+      "get": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "List active review threads",
+        "description": "List review threads tracked during the current server lifecycle.",
+        "operationId": "list_reviews_api_reviews_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReviewResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Reviews Api Reviews Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApprovalRequest": {
+        "properties": {
+          "approved": {
+            "type": "boolean",
+            "title": "Approved",
+            "description": "Set true to commit refactored code to GitHub, or false to reject and regenerate."
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback",
+            "description": "Optional reviewer instructions used to regenerate the refactoring draft when rejected."
+          }
+        },
+        "type": "object",
+        "required": [
+          "approved"
+        ],
+        "title": "ApprovalRequest",
+        "description": "Human-in-the-loop review decision payload."
+      },
+      "CheckpointHistoryResponse": {
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "title": "Thread Id"
+          },
+          "checkpoints": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Checkpoints"
+          }
+        },
+        "type": "object",
+        "required": [
+          "thread_id",
+          "checkpoints"
+        ],
+        "title": "CheckpointHistoryResponse",
+        "description": "Ordered checkpoint history for a LangGraph review thread."
+      },
+      "GitHubBranchRef": {
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Ref",
+            "description": "Git branch name"
+          },
+          "sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha",
+            "description": "Head commit SHA"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ref"
+        ],
+        "title": "GitHubBranchRef",
+        "description": "GitHub Pull Request branch reference."
+      },
+      "GitHubPullRequestObject": {
+        "properties": {
+          "html_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html Url",
+            "description": "Pull Request web URL"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number",
+            "description": "Pull Request number"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "Pull Request title"
+          },
+          "head": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GitHubBranchRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Source branch info"
+          },
+          "base": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GitHubBranchRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Target branch info"
+          }
+        },
+        "type": "object",
+        "title": "GitHubPullRequestObject",
+        "description": "Subset of GitHub's standard `pull_request` webhook object."
+      },
+      "GitHubRepositoryObject": {
+        "properties": {
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name",
+            "description": "Repository full name (owner/repo)"
+          },
+          "html_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html Url",
+            "description": "Repository HTML URL"
+          },
+          "clone_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clone Url",
+            "description": "Repository clone URL"
+          }
+        },
+        "type": "object",
+        "title": "GitHubRepositoryObject",
+        "description": "Subset of GitHub's standard `repository` webhook object."
+      },
+      "GitHubWebhookPayload": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action",
+            "description": "GitHub PR event action",
+            "default": "opened"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number",
+            "description": "Pull Request number"
+          },
+          "pull_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GitHubPullRequestObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repository": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GitHubRepositoryObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pr_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pr Url",
+            "description": "Direct Pull Request URL"
+          },
+          "repository_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Url",
+            "description": "GitHub repository URL"
+          },
+          "repo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repo Url",
+            "description": "Alias for repository_url"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch",
+            "description": "Source branch name"
+          },
+          "branch_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Name",
+            "description": "Alias for branch"
+          },
+          "pr_number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pr Number",
+            "description": "Pull Request number"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files",
+            "description": "Optional inline filename->code map for local/offline webhook simulations"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "GitHubWebhookPayload",
+        "description": "Accepts both standard GitHub PR webhook payloads and simplified mock PR payloads."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "checkpointer": {
+            "type": "string",
+            "title": "Checkpointer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "checkpointer"
+        ],
+        "title": "HealthResponse",
+        "description": "Service health metadata."
+      },
+      "ReviewResponse": {
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "title": "Thread Id",
+            "description": "Unique LangGraph checkpointer thread identifier"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Pipeline execution status: awaiting_approval, in_progress, or completed"
+          },
+          "pr_url": {
+            "type": "string",
+            "title": "Pr Url",
+            "description": "Target Pull Request or repository URL"
+          },
+          "branch": {
+            "type": "string",
+            "title": "Branch",
+            "description": "Target Git branch"
+          },
+          "next_nodes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Next Nodes",
+            "description": "Next scheduled LangGraph node(s) waiting after the interrupt gate"
+          },
+          "revision_count": {
+            "type": "integer",
+            "title": "Revision Count",
+            "description": "Number of refactoring drafts generated",
+            "default": 0
+          },
+          "is_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Approved",
+            "description": "Human reviewer approval state"
+          },
+          "reviewer_feedback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewer Feedback",
+            "description": "Most recent reviewer feedback"
+          },
+          "lint_errors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Lint Errors",
+            "description": "Per-file sandbox flake8/black diagnostics"
+          },
+          "refactored_code": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Refactored Code",
+            "description": "Per-file proposed refactored Python code"
+          },
+          "commit_result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Result",
+            "description": "GitHub commit metadata once changes are applied"
+          },
+          "history": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "History",
+            "description": "Chronological execution and review audit log"
+          },
+          "checkpoint_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkpoint Id",
+            "description": "Current LangGraph checkpoint identifier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "thread_id",
+          "status",
+          "pr_url",
+          "branch"
+        ],
+        "title": "ReviewResponse",
+        "description": "Current state snapshot of an autonomous code review thread."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
